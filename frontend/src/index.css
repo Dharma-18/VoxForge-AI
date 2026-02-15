@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  /* VoxForge AI — dark futuristic / cyberpunk */
+  --color-bg-base: #0a0a0f;
+  --color-bg-panel: #12121a;
+  --color-bg-elevated: #1a1a24;
+  --color-border: #2a2a36;
+  --color-neon-cyan: #00f5ff;
+  --color-neon-magenta: #ff00aa;
+  --color-neon-green: #00ff88;
+  --color-text: #e4e4e7;
+  --color-text-muted: #71717a;
+  --font-sans: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --shadow-glow-cyan: 0 0 20px rgba(0, 245, 255, 0.3);
+  --shadow-glow-magenta: 0 0 20px rgba(255, 0, 170, 0.25);
+}
+
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background-color: var(--color-bg-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-width: 100vw;
+    overflow: hidden;
+  }
+  #root {
+    min-height: 100vh;
+    min-width: 100vw;
+  }
+}
+
+/* Utility classes for neon glow */
+.glow-cyan {
+  box-shadow: var(--shadow-glow-cyan);
+}
+.glow-magenta {
+  box-shadow: var(--shadow-glow-magenta);
+}
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+}
+.border-neon-cyan {
+  border-color: var(--color-neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 245, 255, 0.4);
+}
