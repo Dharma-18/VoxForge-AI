@@ -4,6 +4,7 @@ import LivePreview from './components/Preview/LivePreview'
 import TerminalPanel from './components/Terminal/TerminalPanel'
 import { useEffect } from 'react'
 import { useStore } from './store/useStore'
+import { AuraWebSocket } from './utils/websocket'
 
 function App() {
   const addLog = useStore((state) => state.addLog)
@@ -11,10 +12,67 @@ function App() {
   const code = useStore((state) => state.code)
   const setCode = useStore((state) => state.setCode)
   const commandQueue = useStore((state) => state.commandQueue)
+  const setRobotState = useStore((state) => state.setRobotState)
+  const setStatusText = useStore((state) => state.setStatusText)
+  const setWsConnection = useStore((state) => state.setWsConnection)
+  const setIsConnected = useStore((state) => state.setIsConnected)
   
   useEffect(() => {
     addLog('VoxForge AI initialized')
     addLog('AURA is ready to assist')
+    
+    // Initialize WebSocket connection (optional - falls back to HTTP)
+    try {
+      const ws = new AuraWebSocket()
+      
+      ws.on('connected', () => {
+        setIsConnected(true)
+        addLog('✓ WebSocket connected - Real-time mode active')
+      })
+      
+      ws.on('disconnected', () => {
+        setIsConnected(false)
+        addLog('WebSocket disconnected - Using HTTP fallback')
+      })
+      
+      ws.on('state', (data) => {
+        if (data.state) {
+          setRobotState(data.state)
+        }
+        if (data.message) {
+          setStatusText(data.message)
+        }
+      })
+      
+      ws.on('commands', (data) => {
+        if (data.commands && Array.isArray(data.commands)) {
+          data.commands.forEach(cmd => {
+            addCommand(cmd)
+            addLog(`✓ Command received: ${cmd.action} on ${cmd.target}`)
+          })
+        }
+      })
+      
+      ws.on('complete', (data) => {
+        setRobotState(data.state || 'idle')
+        setStatusText(data.message || 'Ready')
+      })
+      
+      ws.on('error', (error) => {
+        addLog(`WebSocket error: ${error.message || 'Connection failed'}`)
+        setIsConnected(false)
+      })
+      
+      ws.connect()
+      setWsConnection(ws)
+      
+      return () => {
+        ws.disconnect()
+      }
+    } catch (error) {
+      addLog('WebSocket not available - Using HTTP API')
+      setIsConnected(false)
+    }
   }, [])
   
   // Command executor - processes structured JSON commands
@@ -22,9 +80,12 @@ function App() {
     if (commandQueue.length > 0) {
       const command = commandQueue[0]
       executeCommand(command)
-      useStore.getState().commandQueue.shift()
+      // Remove processed command
+      const newQueue = [...commandQueue]
+      newQueue.shift()
+      useStore.setState({ commandQueue: newQueue })
     }
-  }, [commandQueue])
+  }, [commandQueue, code])
   
   const executeCommand = (command) => {
     addLog(`Executing: ${command.action} on ${command.target}`)
@@ -100,8 +161,14 @@ function App() {
       <header className="border-b border-[#2a2a36] px-4 py-3 flex items-center gap-3 bg-[#12121a]">
         <h1 className="text-lg font-semibold text-[#00f5ff] text-glow-cyan">VoxForge AI</h1>
         <span className="text-sm text-zinc-500">Speak. Build. Forge the Web with AI.</span>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+        <div className="ml-auto flex items-center gap-3">
+          {useStore.getState().isConnected && (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+              <span className="text-xs text-[#00ff88]">Real-time</span>
+            </div>
+          )}
+          <div className="w-2 h-2 rounded-full bg-[#00f5ff] animate-pulse"></div>
           <span className="text-xs text-zinc-500">AURA Active</span>
         </div>
       </header>

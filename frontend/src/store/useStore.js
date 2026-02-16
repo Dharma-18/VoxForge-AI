@@ -15,9 +15,13 @@ export const useStore = create((set) => ({
   addLog: (log) => set((state) => ({ logs: [...state.logs, { id: Date.now(), message: log, timestamp: new Date().toLocaleTimeString() }] })),
   clearLogs: () => set({ logs: [] }),
   
-  // Robot state
-  robotState: 'idle', // idle, listening, talking
+  // Robot state: idle, listening, thinking, talking, executing
+  robotState: 'idle',
   setRobotState: (state) => set({ robotState: state }),
+  
+  // Status indicator
+  statusText: 'Ready',
+  setStatusText: (text) => set({ statusText: text }),
   
   // Voice state
   isListening: false,
@@ -27,4 +31,10 @@ export const useStore = create((set) => ({
   commandQueue: [],
   addCommand: (command) => set((state) => ({ commandQueue: [...state.commandQueue, command] })),
   clearCommands: () => set({ commandQueue: [] }),
+  
+  // WebSocket connection
+  wsConnection: null,
+  setWsConnection: (conn) => set({ wsConnection: conn }),
+  isConnected: false,
+  setIsConnected: (connected) => set({ isConnected: connected }),
 }))
