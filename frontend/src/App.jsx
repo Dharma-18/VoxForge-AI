@@ -16,6 +16,7 @@ function App() {
   const setStatusText = useStore((state) => state.setStatusText)
   const setWsConnection = useStore((state) => state.setWsConnection)
   const setIsConnected = useStore((state) => state.setIsConnected)
+  const isConnected = useStore((state) => state.isConnected)
   
   useEffect(() => {
     addLog('VoxForge AI initialized')
@@ -162,7 +163,7 @@ function App() {
         <h1 className="text-lg font-semibold text-[#00f5ff] text-glow-cyan">VoxForge AI</h1>
         <span className="text-sm text-zinc-500">Speak. Build. Forge the Web with AI.</span>
         <div className="ml-auto flex items-center gap-3">
-          {useStore.getState().isConnected && (
+          {isConnected && (
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
               <span className="text-xs text-[#00ff88]">Real-time</span>
