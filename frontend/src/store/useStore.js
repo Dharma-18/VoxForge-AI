@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export const useStore = create((set) => ({
   // Code editor state
-  code: '<!DOCTYPE html>\n<html>\n<head>\n  <title>VoxForge Preview</title>\n  <style>\n    body { margin: 0; padding: 20px; font-family: Arial; background: #f0f0f0; }\n  </style>\n</head>\n<body>\n  <h1>Welcome to VoxForge AI</h1>\n  <p>Start building with voice or text commands!</p>\n</body>\n</html>',
+  code: '<!DOCTYPE html>\n<html>\n<head>\n  <title>VoxForge Preview</title>\n  <style>\n    body { margin: 0; padding: 20px; font-family: Arial; background: #0b1120; color: #e5e7eb; }\n  </style>\n</head>\n<body>\n  <h1>Welcome to VoxForge AI</h1>\n  <p>Start building with voice or text commands!</p>\n</body>\n</html>',
   setCode: (code) => set({ code }),
   
   // Chat messages
@@ -12,7 +12,13 @@ export const useStore = create((set) => ({
   
   // Terminal logs
   logs: [],
-  addLog: (log) => set((state) => ({ logs: [...state.logs, { id: Date.now(), message: log, timestamp: new Date().toLocaleTimeString() }] })),
+  addLog: (log) =>
+    set((state) => ({
+      logs: [
+        ...state.logs,
+        { id: Date.now(), message: log, timestamp: new Date().toLocaleTimeString() },
+      ],
+    })),
   clearLogs: () => set({ logs: [] }),
   
   // Robot state: idle, listening, thinking, talking, executing
@@ -22,6 +28,10 @@ export const useStore = create((set) => ({
   // Status indicator
   statusText: 'Ready',
   setStatusText: (text) => set({ statusText: text }),
+
+  // Workspace / screen state: idle, coding
+  screenState: 'idle',
+  setScreenState: (state) => set({ screenState: state }),
   
   // Voice state
   isListening: false,
@@ -29,7 +39,8 @@ export const useStore = create((set) => ({
   
   // AI commands queue
   commandQueue: [],
-  addCommand: (command) => set((state) => ({ commandQueue: [...state.commandQueue, command] })),
+  addCommand: (command) =>
+    set((state) => ({ commandQueue: [...state.commandQueue, command] })),
   clearCommands: () => set({ commandQueue: [] }),
   
   // WebSocket connection

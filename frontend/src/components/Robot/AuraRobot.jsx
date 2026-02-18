@@ -1,7 +1,6 @@
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Ring, Torus } from '@react-three/drei'
-import * as THREE from 'three'
+import { OrbitControls, Ring } from '@react-three/drei'
 import { useStore } from '../../store/useStore'
 
 function HolographicAura({ state }) {
@@ -51,7 +50,85 @@ function HolographicAura({ state }) {
   )
 }
 
-function RobotBody({ state }) {
+function DeskSetup({ state, screenState }) {
+  const deskRef = useRef()
+  const monitorRef = useRef()
+  const keyboardRef = useRef()
+
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime
+    const active =
+      screenState === 'coding' ||
+      state === 'thinking' ||
+      state === 'executing' ||
+      state === 'talking'
+
+    if (monitorRef.current) {
+      const intensity = active ? 1.2 + Math.sin(time * 4) * 0.3 : 0.4
+      monitorRef.current.material.emissiveIntensity = intensity
+    }
+
+    if (keyboardRef.current && active) {
+      keyboardRef.current.position.y = -0.55 + Math.sin(time * 12) * 0.01
+    }
+
+    if (deskRef.current) {
+      deskRef.current.rotation.z = Math.sin(time * 0.1) * 0.01
+    }
+  })
+
+  const screenColor = '#00f5ff'
+
+  return (
+    <group position={[0, -0.6, 0]}>
+      {/* Desk surface */}
+      <Box ref={deskRef} args={[3, 0.08, 1.2]} position={[0, -0.1, 0.2]}>
+        <meshStandardMaterial
+          color="#020617"
+          metalness={0.4}
+          roughness={0.4}
+        />
+      </Box>
+
+      {/* Desk legs */}
+      <Box args={[0.08, 0.8, 0.08]} position={[-1.3, -0.6, 0.6]}>
+        <meshStandardMaterial color="#020617" metalness={0.6} roughness={0.3} />
+      </Box>
+      <Box args={[0.08, 0.8, 0.08]} position={[1.3, -0.6, 0.6]}>
+        <meshStandardMaterial color="#020617" metalness={0.6} roughness={0.3} />
+      </Box>
+
+      {/* Monitor stand */}
+      <Box args={[0.08, 0.4, 0.08]} position={[0, 0.1, -0.2]}>
+        <meshStandardMaterial color="#020617" metalness={0.7} roughness={0.2} />
+      </Box>
+
+      {/* Monitor */}
+      <mesh ref={monitorRef} position={[0, 0.6, -0.2]}>
+        <boxGeometry args={[1.8, 1.1, 0.1]} />
+        <meshStandardMaterial
+          color="#020617"
+          emissive={screenColor}
+          emissiveIntensity={0.6}
+        />
+      </mesh>
+
+      {/* Keyboard */}
+      <mesh ref={keyboardRef} position={[0, -0.5, 0.6]}>
+        <boxGeometry args={[1.4, 0.06, 0.4]} />
+        <meshStandardMaterial color="#020617" metalness={0.6} roughness={0.3} />
+      </mesh>
+
+      {/* Chair base */}
+      <mesh position={[0, -0.7, 0.6]}>
+        <cylinderGeometry args={[0.4, 0.4, 0.08, 16]} />
+        <meshStandardMaterial color="#020617" metalness={0.5} roughness={0.4} />
+      </mesh>
+    </group>
+  )
+}
+
+function RobotBody({ state, screenState }) {
   const groupRef = useRef()
   const headRef = useRef()
   const leftEyeRef = useRef()
@@ -65,13 +142,20 @@ function RobotBody({ state }) {
     if (groupRef.current) {
       const time = clock.elapsedTime
       
-      // Idle animation - breathing effect
+      // Idle animation - breathing effect + subtle blink
       if (state === 'idle') {
         groupRef.current.position.y = Math.sin(time * 0.8) * 0.08
         groupRef.current.rotation.y = Math.sin(time * 0.4) * 0.05
         // Breathing chest
         if (bodyRef.current) {
           bodyRef.current.scale.y = 1 + Math.sin(time * 1.2) * 0.02
+        }
+        // Simple blink effect
+        const blink = Math.abs(Math.sin(time * 2.5))
+        const eyeScaleY = 0.4 + blink * 0.6
+        if (leftEyeRef.current && rightEyeRef.current) {
+          leftEyeRef.current.scale.y = eyeScaleY
+          rightEyeRef.current.scale.y = eyeScaleY
         }
       }
       
@@ -103,7 +187,7 @@ function RobotBody({ state }) {
         }
       }
       
-      // Executing animation - quick movements
+      // Executing animation - quick movements + typing arms
       if (state === 'executing') {
         groupRef.current.rotation.y = Math.sin(time * 6) * 0.1
         if (chestPanelRef.current) {
@@ -129,9 +213,12 @@ function RobotBody({ state }) {
                        state === 'executing' ? 3.5 : 2
   
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} position={[0, -0.1, 0.2]}>
       {/* Holographic Aura */}
       <HolographicAura state={state} />
+
+      {/* Desk / workspace */}
+      <DeskSetup state={state} screenState={screenState} />
       
       {/* Head */}
       <group ref={headRef}>
