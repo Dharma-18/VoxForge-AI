@@ -2,314 +2,230 @@ import { useState, useRef, useEffect } from 'react'
 import { useStore } from '../../store/useStore'
 import axios from 'axios'
 
+// ─── Avatar ──────────────────────────────────────────────────────────────────
+function AuraAvatar({ state = 'idle' }) {
+  const colorMap = {
+    idle: '#00cfff', listening: '#00ff88',
+    thinking: '#bf5fff', talking: '#00cfff', executing: '#ffee00',
+  }
+  const c = colorMap[state] || '#00cfff'
+  return (
+    <div
+      className="chat-aura-avatar"
+      style={{ borderColor: `${c}55`, boxShadow: `0 0 12px ${c}40`, color: c }}
+    >
+      A
+    </div>
+  )
+}
+
+// ─── Message Bubble ───────────────────────────────────────────────────────────
+function MessageBubble({ msg, robotState }) {
+  const isUser = msg.role === 'user'
+  const isError = msg.type === 'error'
+
+  if (isUser) {
+    return (
+      <div className="chat-msg chat-msg--user">
+        <div className="chat-bubble chat-bubble--user">
+          <p className="chat-text">{msg.content}</p>
+          <span className="chat-time">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div className="chat-user-avatar">U</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="chat-msg chat-msg--aura">
+      <AuraAvatar state={robotState} />
+      <div className={`chat-bubble chat-bubble--aura ${isError ? 'chat-bubble--error' : ''}`}>
+        <div className="chat-bubble-glow" />
+        <p className="chat-text">{msg.content}</p>
+        <div className="chat-bottom-row">
+          <span className="chat-time">AURA · {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          {msg.commands?.length > 0 && (
+            <span className="chat-cmd-badge">⚡ {msg.commands.length} cmd{msg.commands.length > 1 ? 's' : ''}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Typing Indicator ─────────────────────────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div className="chat-msg chat-msg--aura">
+      <AuraAvatar state="thinking" />
+      <div className="chat-bubble chat-bubble--aura chat-bubble--typing">
+        <div className="chat-bubble-glow" />
+        <span className="typing-label">AURA is thinking</span>
+        <span className="typing-wave">
+          <span className="typing-dot" />
+          <span className="typing-dot" />
+          <span className="typing-dot" />
+        </span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function ChatPanel() {
   const [input, setInput] = useState('')
-  const messages = useStore((state) => state.messages)
-  const addMessage = useStore((state) => state.addMessage)
-  const setRobotState = useStore((state) => state.setRobotState)
-  const setStatusText = useStore((state) => state.setStatusText)
-  const setIsListening = useStore((state) => state.setIsListening)
-  const setScreenState = useStore((state) => state.setScreenState)
-  const addLog = useStore((state) => state.addLog)
-  const addCommand = useStore((state) => state.addCommand)
-  const robotState = useStore((state) => state.robotState)
-  const isListening = useStore((state) => state.isListening)
+  const messages = useStore((s) => s.messages)
+  const addMessage = useStore((s) => s.addMessage)
+  const setRobotState = useStore((s) => s.setRobotState)
+  const setStatusText = useStore((s) => s.setStatusText)
+  const setIsListening = useStore((s) => s.setIsListening)
+  const addLog = useStore((s) => s.addLog)
+  const addCommand = useStore((s) => s.addCommand)
+  const robotState = useStore((s) => s.robotState)
+  const isListening = useStore((s) => s.isListening)
   const messagesEndRef = useRef(null)
-  
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-  
+
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-  
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, robotState])
+
+  // ── Send ──────────────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (!input.trim()) return
-    
-    const userMessage = { 
-      role: 'user', 
-      content: input, 
-      timestamp: new Date(),
-      type: 'text',
-    }
-    addMessage(userMessage)
-    const userInput = input
+
+    const userInput = input.trim()
+    addMessage({ role: 'user', content: userInput, timestamp: new Date(), type: 'text' })
     setInput('')
-    
-    // Set thinking / workspace state
     setRobotState('thinking')
-    setStatusText('Processing your request...')
-    setScreenState?.('coding')
-    addLog(`User command: ${userInput}`)
-    
+    setStatusText('Processing your request…')
+    addLog(`User: ${userInput}`)
+
     try {
-      // Get current code from store
       const currentCode = useStore.getState().code
-      
-      // Call backend API
       const response = await axios.post(
         'http://localhost:8000/api/agent/command',
-        {
-          prompt: userInput,
-          context: { code: currentCode },
-        },
-        {
-          timeout: 10000,
-        },
+        { prompt: userInput, context: { code: currentCode } },
+        { timeout: 10000 },
       )
-      
-      // Set executing state
+
       setRobotState('executing')
-      setStatusText('Executing commands...')
-      
-      // Process structured commands
-      if (response.data.commands && Array.isArray(response.data.commands)) {
+      setStatusText('Executing commands…')
+
+      if (response.data.commands?.length) {
         for (const cmd of response.data.commands) {
           addCommand(cmd)
-          addLog(`✓ Executing: ${cmd.action} on ${cmd.target}`)
-          // Small delay for visual feedback
-          await new Promise((resolve) => setTimeout(resolve, 250))
+          addLog(`✓ ${cmd.action} on ${cmd.target}`)
+          await new Promise((r) => setTimeout(r, 250))
         }
       }
-      
-      // Generate AI response
-      const aiResponse =
-        response.data.response ||
-        `I've processed your request and executed ${
-          response.data.commands?.length || 0
-        } command(s).`
-      
-      const aiMessage = {
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date(),
-        type: 'text',
-        commands: response.data.commands || [],
-      }
-      addMessage(aiMessage)
-      
-      // Set talking state and speak
+
+      const aiReply = response.data.response ||
+        `Done! Executed ${response.data.commands?.length || 0} command(s).`
+
+      addMessage({ role: 'assistant', content: aiReply, timestamp: new Date(), type: 'text', commands: response.data.commands || [] })
+
       setRobotState('talking')
-      setStatusText('Responding...')
-      
-      // Speak response
+      setStatusText('Responding…')
+
       if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(aiResponse)
-        utterance.rate = 0.9
-        utterance.pitch = 1.1
-        utterance.volume = 0.8
-        
-        utterance.onend = () => {
-          setRobotState('idle')
-          setStatusText('Ready')
-        }
-        
-        speechSynthesis.speak(utterance)
+        const utt = new SpeechSynthesisUtterance(aiReply)
+        utt.rate = 0.92; utt.pitch = 1.1; utt.volume = 0.8
+        utt.onend = () => { setRobotState('idle'); setStatusText('Ready') }
+        speechSynthesis.speak(utt)
       } else {
-        setTimeout(() => {
-          setRobotState('idle')
-          setStatusText('Ready')
-        }, 1000)
+        setTimeout(() => { setRobotState('idle'); setStatusText('Ready') }, 1200)
       }
     } catch (error) {
-      const errorMsg =
-        error.code === 'ECONNREFUSED' || error.message.includes('Network Error')
-          ? 'Backend server not running. Please start the backend server on port 8000.'
-          : `Error: ${error.message}`
-      
-      addLog(`✗ ${errorMsg}`)
-      
-      const errorResponse = errorMsg.includes('Backend')
-        ? "I'm unable to connect to the backend server. Please ensure it's running on port 8000."
-        : 'Sorry, I encountered an error processing your request. Please try again.'
-      
-      addMessage({
-        role: 'assistant',
-        content: errorResponse,
-        timestamp: new Date(),
-        type: 'error',
-      })
-      
-      setRobotState('idle')
-      setStatusText('Ready')
-    } finally {
-      setScreenState?.('idle')
+      const isNetErr = error.code === 'ECONNREFUSED' || error.message.includes('Network Error')
+      const msg = isNetErr
+        ? 'Backend not reachable. Start the backend on port 8000 to use AI commands.'
+        : `Error: ${error.message}`
+      addLog(`✗ ${msg}`)
+      addMessage({ role: 'assistant', content: msg, timestamp: new Date(), type: 'error' })
+      setRobotState('idle'); setStatusText('Ready')
     }
   }
-  
-  const handleVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      addLog('Speech recognition not supported in this browser')
-      addMessage({
-        role: 'assistant',
-        content: 'Voice recognition is not supported in your browser. Please use text input instead.',
-        timestamp: new Date(),
-        type: 'error'
-      })
+
+  // ── Voice ──────────────────────────────────────────────────────────────────
+  const handleVoice = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) {
+      addLog('✗ Speech recognition not supported')
       return
     }
-    
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-    
-    recognition.onstart = () => {
-      setIsListening(true)
-      setRobotState('listening')
-      setStatusText('Listening...')
-      addLog('🎤 Microphone active - listening for voice command')
+    const rec = new SR()
+    rec.lang = 'en-US'; rec.interimResults = false
+    rec.onstart = () => { setIsListening(true); setRobotState('listening'); setStatusText('Listening…'); addLog('🎤 Listening…') }
+    rec.onresult = (e) => {
+      const t = e.results[0][0].transcript
+      setInput(t); setIsListening(false); setRobotState('thinking'); setStatusText('Processing…')
+      addLog(`Voice: "${t}"`)
+      setTimeout(handleSend, 400)
     }
-    
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      setInput(transcript)
-      setIsListening(false)
-      setRobotState('thinking')
-      setStatusText('Processing voice command...')
-      addLog(`Voice command received: "${transcript}"`)
-      
-      // Auto-send after voice input
-      setTimeout(() => {
-        handleSend()
-      }, 500)
-    }
-    
-    recognition.onerror = (event) => {
-      addLog(`✗ Speech recognition error: ${event.error}`)
-      setIsListening(false)
-      setRobotState('idle')
-      setStatusText('Ready')
-      
-      if (event.error === 'no-speech') {
-        addMessage({
-          role: 'assistant',
-          content: 'I didn\'t hear anything. Please try speaking again.',
-          timestamp: new Date(),
-          type: 'error'
-        })
-      }
-    }
-    
-    recognition.onend = () => {
-      setIsListening(false)
-      if (useStore.getState().robotState === 'listening') {
-        setRobotState('idle')
-        setStatusText('Ready')
-      }
-    }
-    
-    recognition.start()
+    rec.onerror = (e) => { addLog(`✗ Voice error: ${e.error}`); setIsListening(false); setRobotState('idle'); setStatusText('Ready') }
+    rec.onend = () => { setIsListening(false); if (useStore.getState().robotState === 'listening') { setRobotState('idle'); setStatusText('Ready') } }
+    rec.start()
   }
-  
+
+  const isThinking = robotState === 'thinking' || robotState === 'executing'
+
   return (
-    <div className="flex flex-col h-full bg-[#020617]">
+    <div className="chat-panel">
+      {/* Empty state */}
+      {messages.length === 0 && (
+        <div className="chat-empty">
+          <div className="chat-empty-icon">💬</div>
+          <p className="chat-empty-title">Chat with AURA</p>
+          <p className="chat-empty-hint">Try: "Change background to dark blue" or "Add a hero section"</p>
+        </div>
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-zinc-500 text-sm mt-8 space-y-2">
-            <div className="text-[#00f5ff]/60 font-medium mb-3">Start chatting with AURA</div>
-            <div className="text-xs space-y-1">
-              <p className="text-zinc-600">Try voice or text commands like:</p>
-              <p className="text-[#00f5ff]/40">• "Change the background color to blue"</p>
-              <p className="text-[#00f5ff]/40">• "Update the heading text"</p>
-              <p className="text-[#00f5ff]/40">• "Create a dark themed login page"</p>
-            </div>
-          </div>
-        )}
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-          >
-            {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-[#0b1120] border border-[#00f5ff]/40 flex items-center justify-center mr-2 flex-shrink-0 shadow-[0_0_12px_rgba(0,245,255,0.45)]">
-                <span className="text-[#00f5ff] text-xs font-semibold">A</span>
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] rounded-lg px-4 py-2.5 ${
-                msg.role === 'user'
-                  ? 'bg-[#111827] text-zinc-100 border border-[#1f2937]'
-                  : msg.type === 'error'
-                  ? 'bg-[#1f0720] text-[#ff00aa] border border-[#ff00aa]/40 shadow-[0_0_14px_rgba(255,0,170,0.35)]'
-                  : 'bg-[#020617] text-zinc-200 border border-[#00f5ff]/35 shadow-[0_0_18px_rgba(0,245,255,0.35)]'
-              }`}
-            >
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-zinc-500">
-                  {msg.role === 'assistant' ? 'AURA' : 'You'} • {new Date(msg.timestamp).toLocaleTimeString()}
-                </p>
-                {msg.commands && msg.commands.length > 0 && (
-                  <span className="text-xs text-[#00ff88] ml-2">
-                    {msg.commands.length} command{msg.commands.length > 1 ? 's' : ''} executed
-                  </span>
-                )}
-              </div>
-            </div>
-            {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-full bg-[#111827] flex items-center justify-center ml-2 flex-shrink-0">
-                <span className="text-zinc-200 text-xs font-semibold">U</span>
-              </div>
-            )}
+      <div className="chat-messages">
+        {messages.map((msg, i) => (
+          <div key={msg.id || `${msg.timestamp}-${i}`} className="animate-fade-in">
+            <MessageBubble msg={msg} robotState={robotState} />
           </div>
         ))}
-        {(robotState === 'thinking' || robotState === 'executing') && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500 animate-fade-in">
-            <div className="w-7 h-7 rounded-full bg-[#0b1120] border border-[#00f5ff]/40 flex items-center justify-center flex-shrink-0">
-              <span className="text-[#00f5ff] text-xs font-semibold">A</span>
-            </div>
-            <div className="typing-indicator text-zinc-400">
-              Aura is thinking
-              <span className="typing-dot">.</span>
-              <span className="typing-dot">.</span>
-              <span className="typing-dot">.</span>
-            </div>
-          </div>
-        )}
+        {isThinking && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
-      
-      {/* Input */}
-      <div className="border-t border-[#2a2a36] p-3 bg-[#12121a]">
-        <div className="flex gap-2">
+
+      {/* Input area */}
+      <div className="chat-input-area">
+        <div className="chat-input-row">
           <input
+            className="chat-input"
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Talk to Aura..."
-            className="flex-1 bg-[#1a1a24] border border-[#2a2a36] rounded-lg px-4 py-2.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#00f5ff]/50 focus:ring-1 focus:ring-[#00f5ff]/30 transition-all"
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            placeholder="Talk to AURA…"
             disabled={isListening}
           />
           <button
-            onClick={handleVoiceInput}
+            className={`chat-btn-mic ${isListening ? 'chat-btn-mic--active' : ''}`}
+            onClick={handleVoice}
             disabled={isListening}
-            className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              isListening
-                ? 'bg-[#00ff88] text-black animate-pulse shadow-lg shadow-[#00ff88]/50'
-                : 'bg-[#00f5ff]/15 text-[#00f5ff] border border-[#00f5ff]/30 hover:bg-[#00f5ff]/25 hover:shadow-lg hover:shadow-[#00f5ff]/25'
-            }`}
             title="Voice input"
           >
-            🎤
+            {isListening ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
+            )}
           </button>
           <button
+            className="chat-btn-send"
             onClick={handleSend}
             disabled={!input.trim() || isListening}
-            className="px-4 py-2.5 bg-[#00f5ff]/20 text-[#00f5ff] border border-[#00f5ff]/40 rounded-lg text-sm font-medium hover:bg-[#00f5ff]/30 hover:shadow-lg hover:shadow-[#00f5ff]/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            title="Send"
           >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
             <span>Send</span>
-            <span className="text-xs">⚡</span>
           </button>
         </div>
-        <div className="mt-2 text-xs text-zinc-600 text-center">
-          Press Enter to send • Click 🎤 for voice input
-        </div>
+        <p className="chat-input-hint">Enter to send · Mic for voice</p>
       </div>
     </div>
   )

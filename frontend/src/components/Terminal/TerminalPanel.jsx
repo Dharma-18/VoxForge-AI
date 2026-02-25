@@ -51,8 +51,8 @@ export default function TerminalPanel() {
             <span>Waiting for AURA activity...</span>
           </div>
         )}
-        {logs.map((log) => (
-          <div key={log.id} className="flex items-start gap-2 hover:bg-white/[0.02] px-1 py-0.5 rounded transition-colors">
+        {logs.map((log, idx) => (
+          <div key={`${log.timestamp}-${idx}`} className="flex items-start gap-2 hover:bg-white/[0.02] px-1 py-0.5 rounded transition-colors animate-fade-in">
             <span className="text-zinc-700 flex-shrink-0 text-[10px] pt-px">{log.timestamp}</span>
             <span className="text-zinc-600 flex-shrink-0">›</span>
             <span className={getLogClass(log.message)}>{log.message}</span>
