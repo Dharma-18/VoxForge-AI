@@ -178,7 +178,7 @@ function BoyCharacter({ state }) {
   })
 
   return (
-    <group ref={groupRef} position={[0, -0.1, 0.8]}>
+    <group ref={groupRef} position={[0, -0.1, 0.8]} rotation={[0, Math.PI, 0]}>
       {/* Head */}
       <group ref={headRef} position={[0, 0.7, 0]}>
         {/* Face */}
@@ -279,21 +279,48 @@ function CeilingLight({ isLightOn, setIsLightOn }) {
   })
 
   return (
-    <group position={[1.5, 2.5, 0]}>
-      {/* Light fixture base */}
-      <Cylinder args={[0.3, 0.3, 0.1, 16]} position={[0, 0, 0]}>
+    <group position={[0, 2.5, 0]}>
+      {/* Ceiling mount */}
+      <Cylinder args={[0.08, 0.08, 0.15, 16]} position={[0, 0, 0]}>
         <meshPhysicalMaterial color="#333" metalness={0.8} />
       </Cylinder>
 
-      {/* Light Bulb */}
-      <mesh ref={bulbRef} position={[0, -0.15, 0]}>
-        <sphereGeometry args={[0.15, 32, 32]} />
+      {/* Wire from ceiling to bulb */}
+      <Cylinder args={[0.01, 0.01, 0.6, 8]} position={[0, -0.35, 0]}>
+        <meshBasicMaterial color="#555" />
+      </Cylinder>
+
+      {/* Lamp Shade */}
+      <mesh position={[0, -0.65, 0]}>
+        <cylinderGeometry args={[0.15, 0.4, 0.3, 32, 1, true]} />
+        <meshPhysicalMaterial color="#2a2a2a" metalness={0.6} roughness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Light Bulb - large and visible */}
+      <mesh ref={bulbRef} position={[0, -0.75, 0]}>
+        <sphereGeometry args={[0.12, 32, 32]} />
         <meshStandardMaterial
-          color={isLightOn ? "#fff" : "#444"}
+          color={isLightOn ? "#fffbe6" : "#333"}
           emissive={isLightOn ? "#ffea99" : "#000"}
-          emissiveIntensity={isLightOn ? 2 : 0}
+          emissiveIntensity={isLightOn ? 4 : 0}
+          toneMapped={false}
         />
       </mesh>
+
+      {/* Warm glow halo around bulb */}
+      {isLightOn && (
+        <mesh position={[0, -0.75, 0]}>
+          <sphereGeometry args={[0.25, 16, 16]} />
+          <meshStandardMaterial
+            color="#ffea99"
+            emissive="#ffcc44"
+            emissiveIntensity={1.5}
+            transparent
+            opacity={0.15}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
 
       {/* Main ambient room light - toggled by bulb */}
       <pointLight
