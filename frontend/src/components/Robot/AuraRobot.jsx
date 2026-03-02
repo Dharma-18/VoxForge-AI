@@ -4,24 +4,6 @@ import { OrbitControls, Environment, ContactShadows, Float } from '@react-three/
 import { useStore } from '../../store/useStore'
 import * as THREE from 'three'
 
-// ─── Helper Mesh Components ─────────────────────────────────────────────────
-function Box({ args, position, rotation, children, refProp, ...props }) {
-  return (
-    <mesh ref={refProp} position={position} rotation={rotation} castShadow receiveShadow {...props}>
-      <boxGeometry args={args} />
-      {children}
-    </mesh>
-  )
-}
-function Sphere({ args, position, children, refProp, ...props }) {
-  return (
-    <mesh ref={refProp} position={position} castShadow receiveShadow {...props}>
-      <sphereGeometry args={args} />
-      {children}
-    </mesh>
-  )
-}
-
 // ─── State Colors ────────────────────────────────────────────────────────────
 function getColors(state) {
   switch (state) {
@@ -29,375 +11,247 @@ function getColors(state) {
     case 'thinking': return { eye: '#bf5fff', aura: '#9933ff', intensity: 3 }
     case 'talking': return { eye: '#00cfff', aura: '#00aaff', intensity: 4 }
     case 'executing': return { eye: '#ffee00', aura: '#ff8800', intensity: 3.5 }
-    default: return { eye: '#00cfff', aura: '#5599ff', intensity: 2 }
+    default: return { eye: '#00cfff', aura: '#5599ff', intensity: 2 } // idle
   }
 }
 
-// ─── Live Code Display ────────────────────────────────────────────────────────
-function MonitorScreen({ state }) {
-  const screenRef = useRef()
-  const cols = getColors(state)
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
-    const active = state !== 'idle'
-    if (screenRef.current) {
-      screenRef.current.material.emissiveIntensity = active
-        ? 1.2 + Math.sin(t * 8) * 0.4
-        : 0.4 + Math.sin(t * 1.2) * 0.1
-    }
-  })
-  return (
-    <group>
-      {/* Monitor frame - beveled look with physical material */}
-      <Box args={[2.22, 1.48, 0.1]} position={[0, 0.72, -0.2]}>
-        <meshPhysicalMaterial
-          color="#05050a"
-          metalness={0.9}
-          roughness={0.1}
-          clearcoat={1}
-          clearcoatRoughness={0.1}
-        />
-      </Box>
-      {/* Screen area with slight bulge for realism */}
-      <mesh ref={screenRef} position={[0, 0.72, -0.14]}>
-        <boxGeometry args={[2.05, 1.32, 0.02]} />
-        <meshStandardMaterial
-          color="#010410"
-          emissive={cols.eye}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-      {/* Monitor stand */}
-      <Box args={[0.08, 0.6, 0.08]} position={[0, 0.05, -0.2]}>
-        <meshPhysicalMaterial color="#111120" metalness={0.8} roughness={0.2} />
-      </Box>
-      <Box args={[0.7, 0.05, 0.45]} position={[0, -0.25, -0.2]}>
-        <meshPhysicalMaterial color="#0d0d1a" metalness={0.9} roughness={0.1} />
-      </Box>
-    </group>
-  )
-}
-
-// ─── Desk ────────────────────────────────────────────────────────────────────
-function Desk() {
-  return (
-    <group position={[0, -1.05, 0]}>
-      {/* Surface with clearcoat reflection */}
-      <Box args={[3.6, 0.1, 1.5]} position={[0, 0, 0.1]}>
-        <meshPhysicalMaterial
-          color="#0a0a14"
-          metalness={0.7}
-          roughness={0.2}
-          clearcoat={1}
-          clearcoatRoughness={0.05}
-        />
-      </Box>
-      {/* Legs */}
-      {[[-1.65, -0.55, 0.65], [1.65, -0.55, 0.65], [-1.65, -0.55, -0.45], [1.65, -0.55, -0.45]].map((p, i) => (
-        <Box key={i} args={[0.08, 1.1, 0.08]} position={p}>
-          <meshPhysicalMaterial color="#050510" metalness={0.9} roughness={0.1} />
-        </Box>
-      ))}
-    </group>
-  )
-}
-
-// ─── Chair ────────────────────────────────────────────────────────────────────
-function Chair() {
-  return (
-    <group position={[0, -1.6, 1.0]}>
-      {/* Seat */}
-      <Box args={[1.2, 0.15, 1.1]} position={[0, 0, 0]}>
-        <meshPhysicalMaterial color="#08080f" roughness={0.8} />
-      </Box>
-      {/* Backrest */}
-      <Box args={[1.2, 1.3, 0.12]} position={[0, 0.7, -0.52]}>
-        <meshPhysicalMaterial color="#08080f" roughness={0.8} />
-      </Box>
-      {/* Arm rests */}
-      <Box args={[0.1, 0.45, 0.75]} position={[-0.6, 0.3, 0.1]}>
-        <meshPhysicalMaterial color="#05050c" metalness={0.8} roughness={0.2} />
-      </Box>
-      <Box args={[0.1, 0.45, 0.75]} position={[0.6, 0.3, 0.1]}>
-        <meshPhysicalMaterial color="#05050c" metalness={0.8} roughness={0.2} />
-      </Box>
-      {/* Central Pedestal */}
-      <mesh position={[0, -0.4, 0]}>
-        <cylinderGeometry args={[0.1, 0.1, 0.7, 12]} />
-        <meshPhysicalMaterial color="#05050c" metalness={1} roughness={0.1} />
-      </mesh>
-      {/* Base spokes */}
-      <Box args={[0.8, 0.08, 0.08]} position={[0, -0.75, 0]}>
-        <meshPhysicalMaterial color="#05050c" metalness={1} roughness={0.1} />
-      </Box>
-      <Box args={[0.08, 0.08, 0.8]} position={[0, -0.75, 0]}>
-        <meshPhysicalMaterial color="#05050c" metalness={1} roughness={0.1} />
-      </Box>
-    </group>
-  )
-}
-
-// ─── Keyboard ────────────────────────────────────────────────────────────────
-function Keyboard({ state }) {
-  const kbRef = useRef()
-  const cols = getColors(state)
-  useFrame(({ clock }) => {
-    if (!kbRef.current) return
-    const t = clock.elapsedTime
-    if (state === 'executing') {
-      kbRef.current.position.y = -1.0 + Math.sin(t * 18) * 0.012
-    } else {
-      kbRef.current.position.y = THREE.MathUtils.lerp(kbRef.current.position.y, -1.0, 0.1)
-    }
-  })
-  return (
-    <group position={[0, -1.0, 0.5]}>
-      <mesh ref={kbRef}>
-        <boxGeometry args={[1.6, 0.06, 0.55]} />
-        <meshPhysicalMaterial color="#05050f" metalness={0.8} roughness={0.15} />
-      </mesh>
-      {/* Keyboard Backlight */}
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[1.5, 0.45]} />
-        <meshStandardMaterial color={cols.eye} emissive={cols.eye} emissiveIntensity={0.8} transparent opacity={0.3} />
-      </mesh>
-    </group>
-  )
-}
-
-// ─── Main Robot Body ─────────────────────────────────────────────────────────
-function AuraBody({ state }) {
-  const groupRef = useRef()
-  const headRef = useRef()
-  const leftEye = useRef()
-  const rightEye = useRef()
-  const chestRef = useRef()
-  const leftArm = useRef()
-  const rightArm = useRef()
-  const mouthRef = useRef()
-  const antennaOrb = useRef()
-  const [blinkOpen, setBlinkOpen] = useState(true)
+// ─── Drone Core Segmented Orb ──────────────────────────────────────────────
+function DroneCore({ state }) {
+  const coreRef = useRef()
+  const eyeRef = useRef()
   const cols = getColors(state)
 
   const bodyMat = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color: '#0a0a1a',
+    color: '#080812',
     metalness: 1.0,
-    roughness: 0.02,
+    roughness: 0.1,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.01,
-    envMapIntensity: 1.5,
+    clearcoatRoughness: 0.05,
+    envMapIntensity: 2.0,
+    flatShading: true // Gives it the segmented, high-tech poly look
   }), [])
-
-  useEffect(() => {
-    const blink = () => {
-      setBlinkOpen(false)
-      setTimeout(() => setBlinkOpen(true), 140)
-    }
-    const id = setInterval(blink, 4000 + Math.random() * 2500)
-    return () => clearInterval(id)
-  }, [])
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
-
-    // ── Organic Idle: micro-twitches + breathing
-    if (groupRef.current) {
-      const breathe = Math.sin(t * 0.8) * 0.03
-      groupRef.current.position.y = breathe
-      groupRef.current.rotation.y = Math.sin(t * 0.4) * 0.02
-      if (chestRef.current) chestRef.current.scale.y = 1 + Math.sin(t * 1.2) * 0.015
+    if (coreRef.current) {
+      // Core gently breathes and rotates
+      coreRef.current.rotation.y = t * 0.2
+      coreRef.current.position.y = Math.sin(t * 1.5) * 0.05
     }
 
-    // ── Listening: curious tilt + vibrant eyes
-    if (state === 'listening' && headRef.current) {
-      headRef.current.rotation.z = Math.sin(t * 3) * 0.08
-      headRef.current.rotation.x = -0.1
-      if (leftEye.current) leftEye.current.scale.setScalar(1 + Math.sin(t * 10) * 0.2)
-      if (rightEye.current) rightEye.current.scale.setScalar(1 + Math.sin(t * 10) * 0.2)
-    }
+    if (eyeRef.current) {
+      // Eye pulses based on state
+      const pulseSpeed = state === 'thinking' || state === 'executing' ? 5 : 2
+      eyeRef.current.material.emissiveIntensity = cols.intensity * (0.8 + Math.sin(t * pulseSpeed) * 0.2)
 
-    // ── Thinking: organic gaze shift
-    if (state === 'thinking' && headRef.current) {
-      headRef.current.rotation.y = Math.sin(t * 0.5) * 0.25
-      headRef.current.rotation.z = Math.sin(t * 1.8) * 0.1
-      headRef.current.rotation.x = Math.sin(t * 1.2) * 0.1
-    }
-
-    // ── Talking: articulated mouth system
-    if (state === 'talking' && headRef.current) {
-      headRef.current.rotation.x = -0.05 + Math.sin(t * 8) * 0.08
-      if (mouthRef.current) {
-        mouthRef.current.scale.y = 1 + Math.abs(Math.sin(t * 12)) * 2.5
-        mouthRef.current.material.emissiveIntensity = 1.5 + Math.abs(Math.sin(t * 12)) * 2
+      if (state === 'listening') {
+        eyeRef.current.scale.setScalar(1 + Math.sin(t * 8) * 0.15)
+      } else if (state === 'talking') {
+        eyeRef.current.scale.y = 1 + Math.abs(Math.sin(t * 15)) * 0.4
+      } else {
+        eyeRef.current.scale.setScalar(THREE.MathUtils.lerp(eyeRef.current.scale.x, 1, 0.1))
       }
-    }
-
-    // ── Executing: intense typing
-    if (state === 'executing') {
-      if (leftArm.current) leftArm.current.rotation.x = Math.sin(t * 18) * 0.3
-      if (rightArm.current) rightArm.current.rotation.x = Math.sin(t * 18 + 0.8) * 0.3
-      // Subtle shoulder shrug
-      if (chestRef.current) chestRef.current.position.y = 0.05 + Math.sin(t * 10) * 0.01
-    } else {
-      if (leftArm.current) leftArm.current.rotation.x = THREE.MathUtils.lerp(leftArm.current.rotation.x, -0.4, 0.1)
-      if (rightArm.current) rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, -0.4, 0.1)
-    }
-
-    // ── Reset head lerp back
-    if (state === 'idle' && headRef.current) {
-      headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, 0, 0.04)
-      headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, 0, 0.04)
-      headRef.current.rotation.z = THREE.MathUtils.lerp(headRef.current.rotation.z, 0, 0.04)
-    }
-
-    // ── Antenna pulse
-    if (antennaOrb.current) {
-      antennaOrb.current.material.emissiveIntensity = cols.intensity * (1.2 + Math.sin(t * 5) * 0.5)
-    }
-
-    // ── Eye blink logic
-    if (leftEye.current && rightEye.current && state !== 'listening') {
-      const targetY = blinkOpen ? 1 : 0.05
-      leftEye.current.scale.y = THREE.MathUtils.lerp(leftEye.current.scale.y, targetY, 0.3)
-      rightEye.current.scale.y = THREE.MathUtils.lerp(rightEye.current.scale.y, targetY, 0.3)
     }
   })
 
-  const eyeColor = cols.eye
-
   return (
-    <group ref={groupRef} position={[0, -0.2, 0.2]}>
-      {/* ── HEAD ── */}
-      <group ref={headRef} position={[0, 1.15, 0]}>
-        {/* Main Head Casting */}
-        <Box args={[0.82, 0.78, 0.8]} position={[0, 0, 0]}>
-          <primitive object={bodyMat} attach="material" />
-        </Box>
-
-        {/* Visual Gaskets / Trim */}
-        <Box args={[0.86, 0.04, 0.84]} position={[0, 0.39, 0]}>
-          <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={0.8} />
-        </Box>
-        <Box args={[0.86, 0.04, 0.84]} position={[0, -0.39, 0]}>
-          <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={0.5} />
-        </Box>
-
-        {/* Eyes - Dynamic scale handles blinking/pupil pulse */}
-        <group position={[0, 0.08, 0.41]}>
-          <mesh ref={leftEye} position={[-0.24, 0, 0]}>
-            <boxGeometry args={[0.2, 0.14, 0.02]} />
-            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={cols.intensity} />
-          </mesh>
-          <mesh ref={rightEye} position={[0.24, 0, 0]}>
-            <boxGeometry args={[0.2, 0.14, 0.02]} />
-            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={cols.intensity} />
-          </mesh>
-          {/* Glass Faceplate effect */}
-          <Box args={[0.76, 0.68, 0.01]} position={[0, -0.08, -0.02]}>
-            <meshPhysicalMaterial
-              color="#000"
-              transparent
-              opacity={0.4}
-              roughness={0}
-              metalness={1}
-              transmission={1}
-              thickness={0.5}
-            />
-          </Box>
-        </group>
-
-        {/* Mouth Panel */}
-        <mesh ref={mouthRef} position={[0, -0.18, 0.41]}>
-          <boxGeometry args={[0.35, 0.05, 0.01]} />
-          <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={1} transparent opacity={0.8} />
-        </mesh>
-
-        {/* Antenna System */}
-        <group position={[0, 0.4, 0]}>
-          <mesh rotation={[0, 0, 0]} position={[0, 0.2, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 0.4, 8]} />
-            <meshStandardMaterial color="#fff" emissive="#fff" emissiveIntensity={2} />
-          </mesh>
-          <mesh ref={antennaOrb} position={[0, 0.4, 0]}>
-            <sphereGeometry args={[0.09, 24, 24]} />
-            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={cols.intensity} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* ── NECK JOINT ── */}
-      <mesh position={[0, 0.72, 0]}>
-        <sphereGeometry args={[0.18, 16, 16]} />
-        <meshPhysicalMaterial color="#050510" metalness={1} roughness={0.05} />
-      </mesh>
-
-      {/* ── BODY ── */}
-      <mesh ref={chestRef} position={[0, 0, 0]}>
-        <boxGeometry args={[1.15, 1.05, 0.65]} />
+    <group ref={coreRef}>
+      {/* Outer segmented shell */}
+      <mesh castShadow receiveShadow>
+        <icosahedronGeometry args={[0.8, 2]} />
         <primitive object={bodyMat} attach="material" />
       </mesh>
 
-      {/* Chest Core / Heart */}
-      <group position={[0, 0.15, 0.33]}>
-        <Box args={[0.6, 0.4, 0.05]}>
-          <meshPhysicalMaterial color="#000" metalness={1} roughness={0} />
-        </Box>
-        {/* Horizontal Detail Lines */}
-        {[0.12, 0, -0.12].map((y, i) => (
-          <Box key={i} args={[0.55, 0.03, 0.06]} position={[0, y, 0.01]}>
-            <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={state !== 'idle' ? 1.5 : 0.4} />
-          </Box>
-        ))}
-      </group>
+      {/* Inner glowing eye core */}
+      <mesh ref={eyeRef} position={[0, 0, 0.65]}>
+        <sphereGeometry args={[0.3, 32, 32]} />
+        <meshStandardMaterial
+          color="#fff"
+          emissive={cols.eye}
+          emissiveIntensity={cols.intensity}
+          toneMapped={false}
+        />
+      </mesh>
 
-      {/* Shoulder Articulation */}
-      <group position={[-0.68, 0.28, 0]}>
-        <Sphere args={[0.22, 16, 16]}>
-          <meshPhysicalMaterial color="#08081a" metalness={1} roughness={0.1} />
-        </Sphere>
-      </group>
-      <group position={[0.68, 0.28, 0]}>
-        <Sphere args={[0.22, 16, 16]}>
-          <meshPhysicalMaterial color="#08081a" metalness={1} roughness={0.1} />
-        </Sphere>
-      </group>
-
-      {/* ── ARMS ── */}
-      {/* Left */}
-      <group ref={leftArm} position={[-0.8, 0.1, 0]}>
-        <Box args={[0.28, 0.8, 0.28]} position={[0, -0.4, 0]}>
-          <primitive object={bodyMat} attach="material" />
-        </Box>
-        <Sphere args={[0.16, 12, 12]} position={[0, -0.85, 0]}>
-          <meshPhysicalMaterial color="#050510" metalness={1} roughness={0.05} />
-        </Sphere>
-        <Box args={[0.24, 0.6, 0.24]} position={[0, -1.2, 0.1]}>
-          <primitive object={bodyMat} attach="material" />
-        </Box>
-        {/* Hand */}
-        <Box args={[0.28, 0.2, 0.3]} position={[0, -1.55, 0.15]}>
-          <meshPhysicalMaterial color="#050510" metalness={0.9} roughness={0.2} />
-        </Box>
-      </group>
-
-      {/* Right */}
-      <group ref={rightArm} position={[0.8, 0.1, 0]}>
-        <Box args={[0.28, 0.8, 0.28]} position={[0, -0.4, 0]}>
-          <primitive object={bodyMat} attach="material" />
-        </Box>
-        <Sphere args={[0.16, 12, 12]} position={[0, -0.85, 0]}>
-          <meshPhysicalMaterial color="#050510" metalness={1} roughness={0.05} />
-        </Sphere>
-        <Box args={[0.24, 0.6, 0.24]} position={[0, -1.2, 0.1]}>
-          <primitive object={bodyMat} attach="material" />
-        </Box>
-        <Box args={[0.28, 0.2, 0.3]} position={[0, -1.55, 0.15]}>
-          <meshPhysicalMaterial color="#050510" metalness={0.9} roughness={0.2} />
-        </Box>
-      </group>
+      {/* Glass Lens over the eye */}
+      <mesh position={[0, 0, 0.7]}>
+        <sphereGeometry args={[0.35, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#000"
+          transparent
+          opacity={0.4}
+          roughness={0}
+          metalness={1}
+          transmission={1}
+          thickness={0.5}
+        />
+      </mesh>
     </group>
   )
 }
+
+// ─── Spinning Outer Rings ──────────────────────────────────────────────────
+function DroneRings({ state }) {
+  const ring1 = useRef()
+  const ring2 = useRef()
+  const ring3 = useRef()
+  const cols = getColors(state)
+
+  const ringMat = useMemo(() => new THREE.MeshPhysicalMaterial({
+    color: '#050508',
+    metalness: 0.9,
+    roughness: 0.2,
+    clearcoat: 1.0,
+  }), [])
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    let speedMult = 1
+
+    if (state === 'thinking') speedMult = 2.5
+    else if (state === 'executing') speedMult = 4
+    else if (state === 'talking') speedMult = 1.5
+
+    if (ring1.current) {
+      ring1.current.rotation.x = t * 0.5 * speedMult
+      ring1.current.rotation.y = t * 0.3 * speedMult
+    }
+    if (ring2.current) {
+      ring2.current.rotation.x = -t * 0.4 * speedMult
+      ring2.current.rotation.z = t * 0.6 * speedMult
+    }
+    if (ring3.current) {
+      // Glow ring rotates differently
+      ring3.current.rotation.y = t * 0.8 * speedMult
+      ring3.current.rotation.z = Math.sin(t) * 0.2
+    }
+  })
+
+  return (
+    <group>
+      {/* Structural Ring 1 */}
+      <mesh ref={ring1} castShadow receiveShadow>
+        <torusGeometry args={[1.2, 0.04, 16, 64]} />
+        <primitive object={ringMat} attach="material" />
+      </mesh>
+
+      {/* Structural Ring 2 */}
+      <mesh ref={ring2} castShadow receiveShadow>
+        <torusGeometry args={[1.4, 0.03, 16, 64]} />
+        <primitive object={ringMat} attach="material" />
+      </mesh>
+
+      {/* Energy/Glow Ring 3 */}
+      <mesh ref={ring3}>
+        <torusGeometry args={[1.6, 0.015, 16, 100]} />
+        <meshStandardMaterial
+          color={cols.aura}
+          emissive={cols.aura}
+          emissiveIntensity={2}
+          transparent
+          opacity={0.8}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+// ─── Holographic Projection Base ───────────────────────────────────────────
+function ProjectionBase({ state }) {
+  const baseRef = useRef()
+  const cols = getColors(state)
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    if (baseRef.current) {
+      baseRef.current.rotation.y = t * 0.2
+    }
+  })
+
+  return (
+    <group position={[0, -2.0, 0]}>
+      {/* Physical Base Plate */}
+      <mesh receiveShadow castShadow position={[0, 0, 0]}>
+        <cylinderGeometry args={[1.2, 1.4, 0.2, 32]} />
+        <meshPhysicalMaterial color="#050508" metalness={0.9} roughness={0.2} />
+      </mesh>
+
+      {/* Base Inner Glow Ring */}
+      <mesh position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.8, 1.0, 32]} />
+        <meshStandardMaterial
+          color={cols.aura}
+          emissive={cols.aura}
+          emissiveIntensity={1.5}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Holographic Upward Beam */}
+      <mesh position={[0, 1.2, 0]}>
+        <cylinderGeometry args={[1.0, 0.8, 2.4, 32, 1, true]} />
+        <meshStandardMaterial
+          color={cols.aura}
+          emissive={cols.aura}
+          emissiveIntensity={1}
+          transparent
+          opacity={0.08}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+// ─── Dynamic Background Particles ──────────────────────────────────────────
+function EnergyParticles({ state }) {
+  const particlesRef = useRef()
+  const cols = getColors(state)
+  const particleCount = 40
+
+  const [positions] = useState(() => {
+    const pos = new Float32Array(particleCount * 3)
+    for (let i = 0; i < particleCount; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 6
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 6
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 6
+    }
+    return pos
+  })
+
+  useFrame(({ clock }) => {
+    if (particlesRef.current) {
+      particlesRef.current.rotation.y = clock.elapsedTime * 0.05
+      particlesRef.current.rotation.x = Math.sin(clock.elapsedTime * 0.02) * 0.2
+    }
+  })
+
+  return (
+    <points ref={particlesRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={particleCount}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.05}
+        color={cols.eye}
+        transparent
+        opacity={0.6}
+        sizeAttenuation
+        blending={THREE.AdditiveBlending}
+      />
+    </points>
+  )
+}
+
 
 // ─── Scene Root ───────────────────────────────────────────────────────────────
 function Scene({ state }) {
@@ -407,36 +261,41 @@ function Scene({ state }) {
       <Environment preset="city" />
 
       {/* Main Lighting */}
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.2} />
       <directionalLight
-        position={[2, 4, 3]}
-        intensity={1.2}
+        position={[4, 6, 2]}
+        intensity={1.0}
         castShadow
         shadow-mapSize={[1024, 1024]}
       />
+      <directionalLight position={[-4, 2, -2]} intensity={0.5} />
+
+      {/* Drone Core Lights */}
+      <pointLight position={[0, 0, 0]} intensity={1.5} color={cols.aura} distance={6} />
 
       {/* Cinematic Glow Lights */}
-      <pointLight position={[-3, 2, 2]} intensity={2} color={cols.aura} distance={10} />
-      <pointLight position={[3, 2, -1]} intensity={1.5} color="#bf5fff" distance={10} />
-      <pointLight position={[0, 5, 2]} intensity={0.8} color="#fff" distance={8} />
+      <pointLight position={[-3, 2, 2]} intensity={1.5} color={cols.eye} distance={10} />
+      <pointLight position={[3, -2, -1]} intensity={1.0} color="#bf5fff" distance={10} />
 
-      {/* Objects */}
-      <Desk />
-      <Chair />
-      <MonitorScreen state={state} />
-      <Keyboard state={state} />
+      {/* Drone Objects */}
+      <ProjectionBase state={state} />
+      <EnergyParticles state={state} />
 
-      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
-        <AuraBody state={state} />
+      <Float speed={2} rotationIntensity={0.2} floatIntensity={0.3}>
+        <group position={[0, 0.5, 0]}>
+          <DroneCore state={state} />
+          <DroneRings state={state} />
+        </group>
       </Float>
 
       {/* Ground Shadows for Realism */}
       <ContactShadows
-        position={[0, -2.4, 0]}
-        opacity={0.65}
-        scale={10}
-        blur={2.5}
-        far={4.5}
+        position={[0, -2.0, 0]}
+        opacity={0.8}
+        scale={8}
+        blur={2}
+        far={2.5}
+        color="#000000"
       />
     </>
   )
@@ -450,7 +309,7 @@ export default function AuraRobot() {
     <div className="w-full h-full cursor-grab active:cursor-grabbing">
       <Canvas
         shadows
-        camera={{ position: [0, 1.2, 4.5], fov: 42 }}
+        camera={{ position: [0, 0.5, 5.5], fov: 45 }}
         gl={{
           antialias: true,
           alpha: true,
@@ -459,17 +318,19 @@ export default function AuraRobot() {
           toneMappingExposure: 1.2
         }}
       >
-        <color attach="background" args={['#050508']} />
+        <color attach="background" args={['#030306']} />
         <Scene state={robotState} />
         <OrbitControls
           enableZoom={false}
           enablePan={false}
-          minPolarAngle={Math.PI / 3}
-          maxPolarAngle={Math.PI / 2.1}
-          minAzimuthAngle={-Math.PI / 6}
-          maxAzimuthAngle={Math.PI / 6}
+          minPolarAngle={Math.PI / 3.5}
+          maxPolarAngle={Math.PI / 1.8}
+          minAzimuthAngle={-Math.PI / 4}
+          maxAzimuthAngle={Math.PI / 4}
           enableDamping
           dampingFactor={0.05}
+          autoRotate
+          autoRotateSpeed={0.5}
         />
       </Canvas>
     </div>
