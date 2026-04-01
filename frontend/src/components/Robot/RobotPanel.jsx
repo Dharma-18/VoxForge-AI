@@ -2,92 +2,61 @@ import AuraRobot from './AuraRobot'
 import ChatPanel from '../Chat/ChatPanel'
 import { useStore } from '../../store/useStore'
 
-const STATE_CONFIG = {
-  idle: { label: 'Standby', color: '#00cfff', border: 'rgba(0,207,255,0.3)', glow: 'rgba(0,207,255,0.12)', pulse: false },
-  listening: { label: 'Listening…', color: '#00ff88', border: 'rgba(0,255,136,0.35)', glow: 'rgba(0,255,136,0.10)', pulse: true },
-  thinking: { label: 'Thinking…', color: '#bf5fff', border: 'rgba(191,95,255,0.35)', glow: 'rgba(191,95,255,0.10)', pulse: true },
-  talking: { label: 'Responding…', color: '#00cfff', border: 'rgba(0,207,255,0.35)', glow: 'rgba(0,207,255,0.12)', pulse: true },
-  executing: { label: 'Executing…', color: '#ffee00', border: 'rgba(255,238,0,0.35)', glow: 'rgba(255,238,0,0.08)', pulse: true },
-}
-
 export default function RobotPanel() {
-  const robotState = useStore((s) => s.robotState)
-  const statusText = useStore((s) => s.statusText)
-  const isConnected = useStore((s) => s.isConnected)
-  const user = useStore((s) => s.user)
-
-  const cfg = STATE_CONFIG[robotState] || STATE_CONFIG.idle
-
+  const robotState = useStore((state) => state.robotState)
+  const statusText = useStore((state) => state.statusText)
+  const isConnected = useStore((state) => state.isConnected)
+  
+  const getStatusColor = () => {
+    switch (robotState) {
+      case 'listening': return 'text-[#00ff88]'
+      case 'thinking': return 'text-[#ff00aa]'
+      case 'talking': return 'text-[#00f5ff]'
+      case 'executing': return 'text-[#ffff00]'
+      default: return 'text-[#00f5ff]'
+    }
+  }
+  
+  const getStatusDotColor = () => {
+    switch (robotState) {
+      case 'listening': return 'bg-[#00ff88]'
+      case 'thinking': return 'bg-[#ff00aa]'
+      case 'talking': return 'bg-[#00f5ff]'
+      case 'executing': return 'bg-[#ffff00]'
+      default: return 'bg-[#00f5ff]'
+    }
+  }
+  
   return (
-    <div className="robot-panel">
-      {/* ── Header ── */}
-      <div className="robot-header" style={{ borderBottomColor: cfg.border }}>
-        <div className="robot-header-left">
-          <div
-            className="robot-avatar-orb"
-            style={{ borderColor: cfg.border, boxShadow: `0 0 16px ${cfg.glow}`, color: cfg.color }}
-          >
-            <span>A</span>
-            <div className="robot-avatar-pulse" style={{ backgroundColor: cfg.color }} />
-          </div>
+    <div className="w-full h-full flex flex-col">
+      {/* AURA Header */}
+      <div className="px-4 py-3 border-b border-[#2a2a36] bg-[#0a0a0f]">
+        <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="robot-name" style={{ color: cfg.color, textShadow: `0 0 12px ${cfg.glow}` }}>AURA</div>
-            <div className="robot-subtitle">AI Development Agent</div>
+            <h2 className="text-lg font-semibold text-[#00f5ff] text-glow-cyan">AURA</h2>
+            <p className="text-xs text-zinc-500">AI Development Agent</p>
           </div>
+          <div className={`w-2 h-2 rounded-full ${getStatusDotColor()} ${robotState !== 'idle' ? 'animate-pulse' : ''}`}></div>
         </div>
-
-        <div className="robot-header-right">
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-medium ${getStatusColor()}`}>
+            {statusText}
+          </span>
           {isConnected && (
-            <div className="robot-badge robot-badge--green">
-              <span className="robot-badge-dot robot-badge-dot--pulse" style={{ background: '#00ff88' }} />
-              WS
-            </div>
-          )}
-          {user && (
-            <div className="robot-badge" style={{ borderColor: cfg.border, color: cfg.color }}>
-              <span className="robot-badge-dot" style={{ background: cfg.color }} />
-              {user.name.split(' ')[0]}
-            </div>
+            <span className="text-xs text-[#00ff88]">● Connected</span>
           )}
         </div>
       </div>
-
-      {/* ── State bar ── */}
-      <div className="robot-state-bar" style={{ background: `linear-gradient(90deg, ${cfg.glow} 0%, transparent 100%)` }}>
-        <div
-          className={`robot-state-dot ${cfg.pulse ? 'animate-pulse' : ''}`}
-          style={{ background: cfg.color, boxShadow: `0 0 6px ${cfg.color}` }}
-        />
-        <span className="robot-state-label" style={{ color: cfg.color }}>{cfg.label}</span>
-        <span className="robot-state-text">{statusText}</span>
-      </div>
-
-      {/* ── 3D Robot Viewport ── */}
-      <div className="robot-viewport">
-        {/* Subtle corner accents */}
-        <div className="viewport-corner viewport-corner--tl" style={{ borderColor: cfg.color }} />
-        <div className="viewport-corner viewport-corner--tr" style={{ borderColor: cfg.color }} />
-        <div className="viewport-corner viewport-corner--bl" style={{ borderColor: cfg.color }} />
-        <div className="viewport-corner viewport-corner--br" style={{ borderColor: cfg.color }} />
-
-        {/* Scanlines */}
-        <div className="viewport-scanlines" />
-
-        {/* 3D Canvas */}
-        <div className="robot-canvas-wrap">
+      
+      {/* 3D Robot Section */}
+      <div className="h-64 border-b border-[#2a2a36] relative bg-gradient-to-b from-[#0a0a0f] to-[#12121a]">
+        <div className="absolute inset-0 flex items-center justify-center">
           <AuraRobot />
         </div>
-
-        {/* State overlay label */}
-        {robotState !== 'idle' && (
-          <div className="viewport-overlay-label" style={{ color: cfg.color, borderColor: `${cfg.color}33`, background: `${cfg.glow}` }}>
-            {cfg.label}
-          </div>
-        )}
       </div>
-
-      {/* ── Chat ── */}
-      <div className="robot-chat-area">
+      
+      {/* Chat Section */}
+      <div className="flex-1 min-h-0">
         <ChatPanel />
       </div>
     </div>

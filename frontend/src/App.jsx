@@ -1,139 +1,198 @@
-import { useState, useEffect } from 'react'
-import LandingPage from './components/Landing/LandingPage'
-import AuthPage from './components/Auth/AuthPage'
 import RobotPanel from './components/Robot/RobotPanel'
 import CodeEditor from './components/Editor/CodeEditor'
 import LivePreview from './components/Preview/LivePreview'
 import TerminalPanel from './components/Terminal/TerminalPanel'
+import { useEffect } from 'react'
 import { useStore } from './store/useStore'
 import { AuraWebSocket } from './utils/websocket'
 
-// ── Page enum ──────────────────────────────────────────────────────────────
-const PAGE = { LANDING: 'landing', AUTH: 'auth', IDE: 'ide' }
-
-// ── IDE Layout ─────────────────────────────────────────────────────────────
-function IDELayout() {
-  const addLog = useStore((s) => s.addLog)
-  const addCommand = useStore((s) => s.addCommand)
-  const code = useStore((s) => s.code)
-  const setCode = useStore((s) => s.setCode)
-  const commandQueue = useStore((s) => s.commandQueue)
-  const setRobotState = useStore((s) => s.setRobotState)
-  const setStatusText = useStore((s) => s.setStatusText)
-  const setWsConnection = useStore((s) => s.setWsConnection)
-  const setIsConnected = useStore((s) => s.setIsConnected)
-  const isConnected = useStore((s) => s.isConnected)
-  const user = useStore((s) => s.user)
-  const logout = useStore((s) => s.logout)
-
+function App() {
+  const addLog = useStore((state) => state.addLog)
+  const addCommand = useStore((state) => state.addCommand)
+  const code = useStore((state) => state.code)
+  const setCode = useStore((state) => state.setCode)
+  const commandQueue = useStore((state) => state.commandQueue)
+  const setRobotState = useStore((state) => state.setRobotState)
+  const setStatusText = useStore((state) => state.setStatusText)
+  const setWsConnection = useStore((state) => state.setWsConnection)
+  const setIsConnected = useStore((state) => state.setIsConnected)
+  const isConnected = useStore((state) => state.isConnected)
+  
   useEffect(() => {
     addLog('VoxForge AI initialized')
     addLog('AURA is ready to assist')
+    
+    // Initialize WebSocket connection (optional - falls back to HTTP)
     try {
       const ws = new AuraWebSocket()
-      ws.on('connected', () => { setIsConnected(true); addLog('✓ WebSocket connected — Real-time active') })
-      ws.on('disconnected', () => { setIsConnected(false); addLog('WebSocket disconnected — HTTP fallback') })
-      ws.on('state', (d) => { if (d.state) setRobotState(d.state); if (d.message) setStatusText(d.message) })
-      ws.on('commands', (d) => { if (d.commands?.length) d.commands.forEach((c) => { addCommand(c); addLog(`✓ ${c.action} on ${c.target}`) }) })
-      ws.on('complete', (d) => { setRobotState(d.state || 'idle'); setStatusText(d.message || 'Ready') })
-      ws.on('error', (e) => { addLog(`WebSocket error: ${e.message || 'failed'}`); setIsConnected(false) })
+      
+      ws.on('connected', () => {
+        setIsConnected(true)
+        addLog('✓ WebSocket connected - Real-time mode active')
+      })
+      
+      ws.on('disconnected', () => {
+        setIsConnected(false)
+        addLog('WebSocket disconnected - Using HTTP fallback')
+      })
+      
+      ws.on('state', (data) => {
+        if (data.state) {
+          setRobotState(data.state)
+        }
+        if (data.message) {
+          setStatusText(data.message)
+        }
+      })
+      
+      ws.on('commands', (data) => {
+        if (data.commands && Array.isArray(data.commands)) {
+          data.commands.forEach(cmd => {
+            addCommand(cmd)
+            addLog(`✓ Command received: ${cmd.action} on ${cmd.target}`)
+          })
+        }
+      })
+      
+      ws.on('complete', (data) => {
+        setRobotState(data.state || 'idle')
+        setStatusText(data.message || 'Ready')
+      })
+      
+      ws.on('error', (error) => {
+        addLog(`WebSocket error: ${error.message || 'Connection failed'}`)
+        setIsConnected(false)
+      })
+      
       ws.connect()
       setWsConnection(ws)
-      return () => ws.disconnect()
-    } catch { addLog('WebSocket not available — HTTP API'); setIsConnected(false) }
+      
+      return () => {
+        ws.disconnect()
+      }
+    } catch (error) {
+      addLog('WebSocket not available - Using HTTP API')
+      setIsConnected(false)
+    }
   }, [])
-
-  // Command executor
+  
+  // Command executor - processes structured JSON commands
   useEffect(() => {
     if (commandQueue.length > 0) {
-      executeCommand(commandQueue[0])
-      const q = [...commandQueue]; q.shift()
-      useStore.setState({ commandQueue: q })
+      const command = commandQueue[0]
+      executeCommand(command)
+      // Remove processed command
+      const newQueue = [...commandQueue]
+      newQueue.shift()
+      useStore.setState({ commandQueue: newQueue })
     }
   }, [commandQueue, code])
-
-  const executeCommand = (cmd) => {
-    addLog(`Executing: ${cmd.action} on ${cmd.target}`)
+  
+  const executeCommand = (command) => {
+    addLog(`Executing: ${command.action} on ${command.target}`)
+    
     try {
-      let html = code
-      switch (cmd.action) {
-        case 'update_style': html = updateStyle(html, cmd.target, cmd.property, cmd.value); break
-        case 'update_text': html = updateText(html, cmd.target, cmd.value); break
-        case 'add_element': html = addElement(html, cmd.element, cmd.parent); break
-        case 'remove_element': html = removeElement(html, cmd.target); break
-        default: addLog(`Unknown action: ${cmd.action}`); return
+      let updatedCode = code
+      
+      switch (command.action) {
+        case 'update_style':
+          updatedCode = updateStyle(code, command.target, command.property, command.value)
+          break
+        case 'update_text':
+          updatedCode = updateText(code, command.target, command.value)
+          break
+        case 'add_element':
+          updatedCode = addElement(code, command.element, command.parent)
+          break
+        case 'remove_element':
+          updatedCode = removeElement(code, command.target)
+          break
+        default:
+          addLog(`Unknown action: ${command.action}`)
+          return
       }
-      setCode(html); addLog(`✓ ${cmd.action} complete`)
-    } catch (e) { addLog(`✗ Command error: ${e.message}`) }
+      
+      setCode(updatedCode)
+      addLog(`✓ ${command.action} completed`)
+    } catch (error) {
+      addLog(`✗ Error executing command: ${error.message}`)
+    }
   }
-
-  const updateStyle = (h, t, p, v) => {
-    if (t === 'body') {
-      const m = h.match(/<body[^>]*>/i)
-      if (m) {
-        return m[0].includes('style=')
-          ? h.replace(/<body([^>]*)style="([^"]*)"/i, `<body$1style="$2; ${p}: ${v};"`)
-          : h.replace(/<body([^>]*)>/i, `<body$1 style="${p}: ${v};">`)
+  
+  const updateStyle = (html, target, property, value) => {
+    // Simple regex-based style update (for demo - in production use proper HTML parser)
+    if (target === 'body') {
+      const styleMatch = html.match(/<body[^>]*>/i)
+      if (styleMatch) {
+        const bodyTag = styleMatch[0]
+        if (bodyTag.includes('style=')) {
+          return html.replace(
+            /<body([^>]*)style="([^"]*)"/i,
+            `<body$1style="$2; ${property}: ${value};"`
+          )
+        } else {
+          return html.replace(/<body([^>]*)>/i, `<body$1 style="${property}: ${value};">`)
+        }
       }
     }
-    return h
+    return html
   }
-  const updateText = (h, t, v) => h.replace(new RegExp(`<${t}[^>]*>([^<]*)</${t}>`, 'i'), `<${t}>${v}</${t}>`)
-  const addElement = (h, el, p) => h.replace(new RegExp(`</${p}>`, 'i'), `${el}</${p}>`)
-  const removeElement = (h, t) => h.replace(new RegExp(`<${t}[^>]*>.*?</${t}>`, 'gis'), '')
-
+  
+  const updateText = (html, target, value) => {
+    // Simple text replacement
+    const regex = new RegExp(`<${target}[^>]*>([^<]*)</${target}>`, 'i')
+    return html.replace(regex, `<${target}>${value}</${target}>`)
+  }
+  
+  const addElement = (html, element, parent) => {
+    // Add element before closing parent tag
+    const parentRegex = new RegExp(`</${parent}>`, 'i')
+    return html.replace(parentRegex, `${element}</${parent}>`)
+  }
+  
+  const removeElement = (html, target) => {
+    // Remove element and its content
+    const regex = new RegExp(`<${target}[^>]*>.*?</${target}>`, 'gis')
+    return html.replace(regex, '')
+  }
+  
   return (
-    <div className="ide-root ide-enter">
-      {/* ── Header ── */}
-      <header className="ide-header">
-        <div className="ide-logo">
-          <div className="ide-logo-orb">V</div>
-          <div>
-            <div className="ide-logo-name">VoxForge AI</div>
-            <div className="ide-logo-tagline">Speak. Build. Forge.</div>
-          </div>
-        </div>
-
-        <div className="ide-header-center">
-          <div className="ide-status-pill">
-            <div className="ide-status-dot" />
-            AURA Development IDE
-          </div>
-        </div>
-
-        <div className="ide-header-right">
+    <div className="min-h-screen bg-[#0a0a0f] text-zinc-200 flex flex-col">
+      {/* Header */}
+      <header className="border-b border-[#2a2a36] px-4 py-3 flex items-center gap-3 bg-[#12121a]">
+        <h1 className="text-lg font-semibold text-[#00f5ff] text-glow-cyan">VoxForge AI</h1>
+        <span className="text-sm text-zinc-500">Speak. Build. Forge the Web with AI.</span>
+        <div className="ml-auto flex items-center gap-3">
           {isConnected && (
-            <div className="ide-badge ide-badge--green">
-              <div className="ide-badge-dot ide-badge-dot--pulse" style={{ background: '#00ff88' }} />
-              Real-time
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+              <span className="text-xs text-[#00ff88]">Real-time</span>
             </div>
           )}
-          <div className="ide-badge ide-badge--cyan">
-            <div className="ide-badge-dot" style={{ background: '#00cfff' }} />
-            AURA Active
-          </div>
-          {user && (
-            <div className="ide-user-chip" onClick={logout} title="Click to log out">
-              <div className="ide-user-avatar">{user.name[0].toUpperCase()}</div>
-              <span className="ide-user-name">{user.name}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-            </div>
-          )}
+          <div className="w-2 h-2 rounded-full bg-[#00f5ff] animate-pulse"></div>
+          <span className="text-xs text-zinc-500">AURA Active</span>
         </div>
       </header>
-
-      {/* ── IDE Grid ── */}
-      <main className="ide-grid">
-        <aside className="ide-panel ide-panel--left">
+      
+      {/* Main IDE Layout */}
+      <main className="flex-1 grid grid-cols-[350px_1fr_1fr] grid-rows-[1fr_200px] gap-px bg-[#2a2a36] p-1 min-h-0">
+        {/* Left Panel - Robot + Chat */}
+        <aside className="bg-[#12121a] rounded border border-[#00f5ff]/30 shadow-[0_0_15px_rgba(0,245,255,0.15)] overflow-hidden">
           <RobotPanel />
         </aside>
-        <section className="ide-panel">
+        
+        {/* Center Panel - Code Editor */}
+        <section className="bg-[#12121a] rounded border border-[#2a2a36] overflow-hidden">
           <CodeEditor />
         </section>
-        <section className="ide-panel">
+        
+        {/* Right Panel - Live Preview */}
+        <section className="bg-[#12121a] rounded border border-[#2a2a36] overflow-hidden">
           <LivePreview />
         </section>
-        <div className="ide-panel ide-panel--terminal">
+        
+        {/* Bottom Panel - Terminal */}
+        <div className="col-span-3 bg-[#1a1a24] rounded border border-[#2a2a36] overflow-hidden">
           <TerminalPanel />
         </div>
       </main>
@@ -141,15 +200,4 @@ function IDELayout() {
   )
 }
 
-// ── Root App ───────────────────────────────────────────────────────────────
-export default function App() {
-  const [page, setPage] = useState(PAGE.LANDING)
-
-  return (
-    <>
-      {page === PAGE.LANDING && <LandingPage onLaunch={() => setPage(PAGE.AUTH)} />}
-      {page === PAGE.AUTH && <AuthPage onSuccess={() => setPage(PAGE.IDE)} />}
-      {page === PAGE.IDE && <IDELayout />}
-    </>
-  )
-}
+export default App

@@ -1,61 +1,34 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
 
-function getLogClass(message) {
-  if (message.startsWith('✓')) return 'log-success'
-  if (message.startsWith('✗')) return 'log-error'
-  if (message.toLowerCase().includes('error') || message.toLowerCase().includes('fail')) return 'log-error'
-  if (message.toLowerCase().includes('warn')) return 'log-warning'
-  if (message.toLowerCase().includes('connect') || message.toLowerCase().includes('websocket')) return 'log-info'
-  if (message.toLowerCase().includes('initialized') || message.toLowerCase().includes('ready')) return 'log-info'
-  return 'log-default'
-}
-
 export default function TerminalPanel() {
   const logs = useStore((state) => state.logs)
   const clearLogs = useStore((state) => state.clearLogs)
   const logsEndRef = useRef(null)
-
+  
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
-
+  
   return (
-    <div className="w-full h-full flex flex-col bg-[#060609]">
-      {/* Header */}
-      <div className="px-4 py-2 border-b border-[#1a1a24] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
-            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-          </div>
-          <span className="text-[11px] uppercase tracking-widest text-zinc-600 font-mono">
-            Terminal · AURA Logs
-          </span>
-          <div className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
-        </div>
+    <div className="w-full h-full flex flex-col bg-[#0a0a0f]">
+      <div className="px-4 py-2 border-b border-[#2a2a36] flex items-center justify-between">
+        <span className="text-xs uppercase tracking-wider text-zinc-500">Terminal / Logs</span>
         <button
           onClick={clearLogs}
-          className="text-[11px] text-zinc-600 hover:text-[#ff00aa] transition-colors font-mono px-2 py-0.5 rounded border border-transparent hover:border-[#ff00aa]/30"
+          className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
         >
           Clear
         </button>
       </div>
-
-      {/* Logs */}
-      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs space-y-0.5">
+      <div className="flex-1 overflow-y-auto p-3 font-mono text-xs">
         {logs.length === 0 && (
-          <div className="text-zinc-700 mt-2 flex items-center gap-2">
-            <span className="log-info">›</span>
-            <span>Waiting for AURA activity...</span>
-          </div>
+          <div className="text-zinc-600">No logs yet. Start interacting with AURA to see activity.</div>
         )}
-        {logs.map((log, idx) => (
-          <div key={`${log.timestamp}-${idx}`} className="flex items-start gap-2 hover:bg-white/[0.02] px-1 py-0.5 rounded transition-colors animate-fade-in">
-            <span className="text-zinc-700 flex-shrink-0 text-[10px] pt-px">{log.timestamp}</span>
-            <span className="text-zinc-600 flex-shrink-0">›</span>
-            <span className={getLogClass(log.message)}>{log.message}</span>
+        {logs.map((log) => (
+          <div key={log.id} className="mb-1 text-zinc-400">
+            <span className="text-zinc-600">[{log.timestamp}]</span>{' '}
+            <span className="text-zinc-300">{log.message}</span>
           </div>
         ))}
         <div ref={logsEndRef} />
